@@ -1,0 +1,175 @@
+//--- 010 Editor v11.0.1 Binary Template
+//
+//   File: "Doom Eternal Streamdb.bt"
+//   Author: SamPT
+//   Version: 1.0
+//   Purpose: For reading DOOM Eternal .streamdb files.
+//   Date: August 25 2021
+//   Category: Game
+//   File Mask: *.streamdb
+//   ID Bytes: 50 A5 C2 29 2E F3 C7 61
+//------------------
+
+LittleEndian();
+local int i;
+struct STREAM;
+struct HEADER;
+struct TABLE_A;
+struct TABLE_B;
+struct TABLE_B_HEADER;
+struct TABLE_BODY_AI;
+struct TABLE_BODY_FIRSTPERSON;
+struct ENTRY_A;
+struct ENTRY_B;
+
+typedef struct {
+	HEADER header <name="Streamdb File Header">;
+	TABLE_A table_A <name="Index: File Entries">;
+	TABLE_B table_B <name="Special Tables">;
+} STREAM;
+
+typedef struct {		
+	uint64 magicNumber <name="Streamdb Magic Number">;
+	uint32 dataStartOffset <name="Starting Offset: Compressed Data">;
+	uint64 nullBytes64;
+	uint32 nullBytes32;
+	local uint64 data_start_pos = dataStartOffset;
+} HEADER;
+
+typedef struct {
+	uint32 numEntries;
+	uint32 tableType;
+	for (i=0; i < numEntries; i++)
+		ENTRY_A entry_a <name=readEntryDecimal_A, read=readEntryCompressedSize>;
+} TABLE_A;
+
+typedef struct {
+	uint32 numSpecialTables;
+	uint32 tableSizeInBytes;
+	
+	for (i=0; i < numSpecialTables; i++)
+		TABLE_B_HEADER table_b_header <name=readTableType>;
+	
+  if (numSpecialTables > 0) {
+		if (table_b_header[0].hashValue == 5891933081285280768)
+			TABLE_BODY_AI table_body_ai <name="Table Entries: AI">;
+		else
+			TABLE_BODY_FIRSTPERSON table_body_firstperson <name="Table Entries: FirstPerson">;
+	}
+
+	if (numSpecialTables > 1) {
+		if (table_b_header[1].hashValue == 5891933081285280768)
+			TABLE_BODY_AI table_body_ai <name="Table Entries: AI">;
+		else
+			TABLE_BODY_FIRSTPERSON table_body_firstperson <name="Table Entries: FirstPerson">;
+	}
+	
+} TABLE_B;
+
+typedef struct {
+	uint64 hashValue <name=readHash>;
+	uint32 numEntriesBefore;
+	uint32 numEntries;
+} TABLE_B_HEADER;
+
+typedef struct {  
+
+	if (table_b_header[0].hashValue == 5891933081285280768)
+		local int index = 0;
+	else
+		local int index = 1;
+
+	for (i=0; i < table_b_header[index].numEntries; i++)
+		ENTRY_B entry_b <name=readEntryDecimal_B, read=readEntryHex_B>;
+
+} TABLE_BODY_AI;
+
+typedef struct {
+
+	if (table_b_header[0].hashValue == 6801151928053439575)
+		local int index = 0;
+	else
+		local int index = 1;
+
+	for (i=0; i < table_b_header[index].numEntries; i++)
+		ENTRY_B entry_B <name=readEntryDecimal_B, read=readEntryHex_B>;
+
+} TABLE_BODY_FIRSTPERSON;
+
+typedef struct {
+	local uint64 longentry = ReadUInt64(FTell());
+    uint32 entry_ID_A <hidden=true>;
+    uint32 entry_ID_B <hidden=true>;
+    uint32 fileOffset <read=readFileOffset>; // multiply by 16 for real offset
+    uint32 compressedSize;
+} ENTRY_A;
+
+typedef struct {
+	local uint64 longentry = ReadUInt64(FTell());
+    uint32 entry_ID_A <hidden=true>;
+	uint32 entry_ID_B <hidden=true>;
+} ENTRY_B;
+
+string readHash (uint64 hashValue) {
+	if (hashValue == 5891933081285280768)
+		return "Hash of 'AI'";
+	if (hashValue == 6801151928053439575)
+		return "Hash of 'FirstPerson'";
+	return "";
+}
+
+string readTableType (TABLE_B_HEADER &v) {
+	if (v.hashValue == 5891933081285280768)
+		return "Table Header: AI ";
+	if (v.hashValue == 6801151928053439575)
+		return "Table Header: FirstPerson ";
+}
+
+// multiply by 16 for the real file offset
+string readFileOffset (uint32 &v) {
+	local string value;
+	local uint64 zTmp = 16 * (uint64)v;
+	SPrintf(value, "%Lu", zTmp);
+	return value;
+}
+
+// use if you need fileOffset for csv export
+string readEntryFileOffset (ENTRY_A &v) {
+    local string value;
+	local uint64 realOffset = 16 * (uint64)v.fileOffset;
+	SPrintf(value, "%Lu", realOffset);
+	return value;
+}
+
+// use if you need compressedSize for csv export
+string readEntryCompressedSize (ENTRY_A &v) {
+    local string value;
+	SPrintf(value, "%Lu", v.compressedSize);
+	return value;
+}
+
+// consolidate when you're not feeling lazy...
+string readEntryHex_A (ENTRY_A &v) {
+	local string value;
+	SPrintf(value, "%08X %08X", v.entry_ID_B, v.entry_ID_A);
+	return value;
+}
+string readEntryHex_B (ENTRY_B &v) {
+	local string value;
+	SPrintf(value, "%08X %08X", v.entry_ID_B, v.entry_ID_A);
+	return value;
+}
+
+// consolidate when you're not feeling lazy...
+string readEntryDecimal_A (ENTRY_A &v) {
+	local string value;
+	SPrintf(value, "%020Lu", v.longentry);
+	return value;
+}
+string readEntryDecimal_B (ENTRY_B &v) {
+	local string value;
+	SPrintf(value, "%020Lu", v.longentry);
+	return value;
+}
+
+STREAM stream <name="DOOM Eternal StreamDB">;
