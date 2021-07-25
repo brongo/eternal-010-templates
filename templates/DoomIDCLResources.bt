@@ -5,6 +5,7 @@
 //  Authors: SamPT, based on original template by infogram.
 //  Version: 0.3
 //  Purpose: Parse a DOOM Eternal .resources file
+//  Date: August 25, 2021
 //  Category: Game
 //  File Mask: *.resources
 //  ID Bytes: 49 44 43 4C
