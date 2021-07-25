@@ -4,7 +4,7 @@
 //  File: DoomIDCLResources.bt
 //  Authors: SamPT, based on original template by infogram.
 //  Version: 0.3
-//  Purpose: Parse a DOOM Eternal (and maybe Wolfenstein 2/YoungBlood) IDCL container
+//  Purpose: Parse a DOOM Eternal .resources file
 //  Category: Game
 //  File Mask: *.resources, *.bfile
 //  ID Bytes: 49 44 43 4C
