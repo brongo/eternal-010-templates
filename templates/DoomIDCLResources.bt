@@ -1,0 +1,206 @@
+//------------------------------------------------
+//--- 010 Editor v10.0.1 Binary Template
+//
+//  File: DoomIDCLResources.bt
+//  Authors: SamPT, based on original template by infogram.
+//  Version: 0.3
+//  Purpose: Parse a DOOM Eternal (and maybe Wolfenstein 2/YoungBlood) IDCL container
+//  Category: Game
+//  File Mask: *.resources, *.bfile
+//  ID Bytes: 49 44 43 4C
+//  History: Updated by SamPT March-August 2021. Original version March 2020 by infogram. 
+//------------------------------------------------
+
+LittleEndian();
+DisplayFormatHex();
+
+local int i = 0;
+
+struct IDCL_Header // 0x7C bytes
+{
+  /* 0x00 */ DWORD Magic;
+  /* 0x04 */ DWORD Version;
+  /* 0x08 */ DWORD Unk8;
+  /* 0x08 */ DWORD UnkC;
+  
+  /* 0x10 */ QWORD Unk10;
+  /* 0x18 */ QWORD Unk18; // not read?
+  
+  /* 0x20 */ DWORD NumFileEntries;
+  /* 0x24 */ DWORD NumDependencyEntries; // resource dependencies list
+  /* 0x28 */ DWORD NumDependencyIndexes; // index for resource dependencies
+  /* 0x2C */ DWORD NumPathIndexes; // number of type/name indexes that come after AddrPaths + (NumPaths * 4) ? 
+  
+  /* 0x30 */ DWORD Unk30;
+  /* 0x34 */ DWORD NumErrorLogs;
+  /* 0x38 */ DWORD SizeStrings;
+  /* 0x3C */ DWORD SizeErrorLog; // add 8 for correct size
+  
+  /* 0x40 */ QWORD AddrStrings;
+  /* 0x48 */ QWORD AddrErrorLogs; // If AddrErrorLog == AddrUnk58 then there's no errors, otherwise this points to error msgs?
+  
+  /* 0x50 */ QWORD AddrEntries;
+  /* 0x58 */ QWORD AddrDependencyEntries;
+  
+  /* 0x60 */ QWORD AddrPaths; 
+  /* 0x68 */ QWORD AddrData;
+  
+  // Version == C only
+  if(Version >= 0xC)
+  {
+    /* 0x70 */ DWORD AddrUnk70;
+    /* 0x74 */ QWORD AddrEndMarker;
+  }
+};
+
+struct IDCL_FileEntry // 0x90 bytes
+{
+  /* 0x00 */ QWORD PathTuple_OffsetType; // game adds this to PathTuple_Index to get idx of the file type - always 0?
+  /* 0x08 */ QWORD PathTuple_OffsetName; // game adds this to PathTuple_Index to get idx of the file name - always 1?
+
+  // game adds this to PathTuple_Index if not 0xFFFF... and reads something from there - parent/base file name maybe?
+  // or possibly a third part to the file path - some printf strings in EXE do seem to use %s:%s:%s ...
+  /* 0x10 */ QWORD Unk10Dummy1; 
+
+  /* 0x18 */ QWORD DependencyIndexNumber; // some index into DependencyEntries 
+  /* 0x20 */ QWORD PathTuple_Index; // divide by 2 to get the PathTuple array index (or multiply by 8 to get offset, as game does)
+  /* 0x28 */ QWORD Unk28Zero0; // something related to Unk30 in header
+  /* 0x30 */ QWORD Unk30Zero1; // something related to NumErrorLogs in header, error log idx?
+  /* 0x38 */ QWORD DataOffset;
+  /* 0x40 */ QWORD DataSize;
+  /* 0x48 */ QWORD DataSizeUncompressed;
+	
+  /* 0x50 */ QWORD DataCheckSum; // murmurhash of decompressed data
+  /* 0x58 */ QWORD Timestamp; // divide by 1000000 for UNIX timestamp
+  /* 0x60 */ QWORD StreamResourceHash; // gets converted to .streamdb index, see SAMUEL source code for calculation.
+
+  /* 0x68 */ DWORD Version; // game calls it a version, but it's more like a resource type. Model = 0x43, Image = 0x21, rs_streamfile = 0x00.
+  /* 0x6C */ BYTE HvkByte1; // 2 if HavokShape or RenderProg, 1 for certain SWF images (rare)
+
+  /* 0x6D */ BYTE Unk6D;
+  /* 0x6D */ BYTE Unk6E;
+  /* 0x6D */ BYTE Unk6F;
+  /* 0x70 */ BYTE CompressionMode; // 0 = uncompressed, 1 = zlib, 2 = oodle_kraken, 4 = oodle_kraken with headers?, 5 = oodle_leviathan (handled by sub_1408D8D00)
+
+  /* 0x71 */ BYTE Unk71; 
+  /* 0x72 */ BYTE HvkByte2; // 0x41 for HavokShapes, varies for RenderProg
+  /* 0x73 */ BYTE HvkByte3; // 1 for RenderProg
+
+  /* 0x74 */ DWORD Unk74;
+  /* 0x78 */ DWORD Unk78Zero2;
+
+  /* 0x7C */ DWORD Flags; // 8 = supports regen, 1 = required for regen?, 2 = ?? (always set?, 0x10000 = encrypted??
+  /* 0x80 */ DWORD DesiredCompressionMode; // Desired compression mode, only used while building?
+
+  /* 0x84 */ WORD NumDependencies;
+  /* 0x86 */ WORD Unk86; // sub_1408E8DC0 reads this
+
+  // Only set while building?
+  /* 0x88 */ BYTE Unk88;
+  /* 0x89 */ BYTE Unk89;
+
+  // padding?
+  /* 0x8A */ BYTE Unk8A;
+  /* 0x8B */ BYTE Unk8B;
+  /* 0x8C */ BYTE Unk8C;
+  /* 0x8D */ BYTE Unk8D;
+  /* 0x8E */ BYTE Unk8E;
+  /* 0x8F */ BYTE Unk8F;
+};
+
+// 010 workaround struct..
+struct IDCL_String
+{
+  string String <optimize=false>;
+};
+
+struct IDCL_StringSection // 0x8+ bytes
+{
+  local int startAddr = FTell();
+  /* 0x00 */ QWORD StringsCount;
+  /* 0x08 */ QWORD Offsets[StringsCount];
+
+  /* 0xXX */ IDCL_String Strings[StringsCount] <optimize=false>; // hack for file completion, for reading we'll use Offsets instead to be safe
+
+  // Make sure to fill struct to Header.SizeStrings length for completion
+  local int size = FTell() - startAddr;
+  if(Header.SizeStrings > size)
+    BYTE pad[Header.SizeStrings - size];
+};
+
+struct IDCL_ErrorLogEntry // 0x10+ bytes
+{
+  /* 0x00 */ QWORD Unk0;
+  /* 0x08 */ WORD Unk8;
+  /* 0x0A */ WORD UnkA;
+  /* 0x0C */ DWORD Size;
+  /* 0x10 */ char Value[Size];
+  /* 0xXX */ DWORD Unk;
+};
+
+struct IDCL_DependencyEntry // 0x20 bytes
+{
+  /* 0x00 */ QWORD AssetTypeStringIndex; // string index for this asset type
+  /* 0x08 */ QWORD FileNameStringIndex; // string index for this file name
+  /* 0x10 */ DWORD DependencyType; // checked inside sub_1408E5D20 ? Always 2 or 5.
+  /* 0x14 */ DWORD Unk14; // Always 1
+  /* 0x18 */ QWORD Unk18; // Might be hash but is only a DWORD for models.
+};
+
+struct IDCL_EndMarker // 0x4 - 0x10 bytes
+{
+  /* 0x00 */ DWORD Magic;
+
+  local int padSize = 0x10 - (FTell() % 0x10);
+  if(padSize > 0)
+    BYTE pad[padSize] <hidden = true>;
+};
+
+IDCL_Header Header;
+
+FSeek(Header.AddrEntries);
+IDCL_FileEntry FileEntries[Header.NumFileEntries];
+
+FSeek(Header.AddrStrings);
+IDCL_StringSection Strings;
+local int StringsEnd = Header.AddrStrings + 8 + (8 * Strings.StringsCount);
+
+string GetString(QWORD stringIdx)
+{
+  local QWORD offset = Strings.Offsets[stringIdx];
+  FSeek(StringsEnd + offset);
+  IDCL_String retVal <hidden = true>;
+  return retVal.String;
+};
+
+FSeek(Header.AddrErrorLogs);
+IDCL_ErrorLogEntry ErrorLogs[Header.NumErrorLogs];
+
+FSeek(Header.AddrDependencyEntries);
+IDCL_DependencyEntry DependencyEntries[Header.NumDependencyEntries];
+
+FSeek(Header.AddrPaths);
+DWORD DependencyIndexes[Header.NumDependencyIndexes]; 
+QWORD PathStringIndexes[Header.NumPathIndexes]; // type/name string indexes for each file entry
+
+string GetPathString(QWORD pathId)
+{
+  return GetString(PathStringIndexes[pathId]);  
+}
+
+if(Header.Version >= 0xC)
+{
+  FSeek(Header.AddrEndMarker);
+  IDCL_EndMarker EndMarker; // for file completion...
+}
+
+for(i = 0; i < Header.NumFileEntries; i++)
+{
+  Printf("#%d %s:%s @ 0x%x:0x%x\n", i, 
+    GetPathString(FileEntries[i].PathTuple_Index + FileEntries[i].PathTuple_OffsetType), 
+    GetPathString(FileEntries[i].PathTuple_Index + FileEntries[i].PathTuple_OffsetName), 
+    FileEntries[i].DataOffset, FileEntries[i].DataSize);
+}
+
+if(Header.NumPathIndexes != (Header.NumFileEntries * 2))
+  Printf("!!! Header.NumPathIndexes = %d (expected %d) !!!\n", Header.NumPathIndexes, Header.NumFileEntries * 2);
