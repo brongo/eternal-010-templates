@@ -36,7 +36,7 @@ typedef struct {
 
 typedef struct {
 	uint64 MipLevel;
-	uint32 ID_or_Magic; // 0x803F0000 is Magic #, otherwise is ID.
+	float  unkFloat1; // usually 1.0, purpose unknown
 	ubyte  _nullPadding;
 	uint32 TextureFormat <read=getTextureFormat>;
 	uint64 Always7;
