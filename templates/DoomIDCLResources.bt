@@ -6,7 +6,7 @@
 //  Version: 0.3
 //  Purpose: Parse a DOOM Eternal .resources file
 //  Category: Game
-//  File Mask: *.resources, *.bfile
+//  File Mask: *.resources
 //  ID Bytes: 49 44 43 4C
 //  History: Updated by SamPT March-August 2021. Original version March 2020 by infogram. 
 //------------------------------------------------
