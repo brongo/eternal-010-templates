@@ -1,0 +1,328 @@
+//--- 010 Editor v11.0.1 Binary Template
+//
+//   File: DoomEternalTGA.bt
+//   Author: SamPT
+//   Version: 1.2
+//   Purpose: For reading DOOM Eternal .tga files.
+//   Date: August 25, 2021
+//   History: Original release: March 31, 2021
+//------------------
+
+LittleEndian();
+local int i;		
+struct TGAFILE;
+struct HEADER;
+struct MIPMAP_MAIN;
+struct MIPMAP_SUB;
+
+typedef struct {
+	HEADER header <name="TGA Header">;
+	MIPMAP_MAIN MipData_Main;
+	for (i=1; i<header.MipCount; i++) {
+		MIPMAP_SUB MipData_Sub;
+	}
+} TGAFILE;
+
+typedef struct {		
+	char Signature[3] <name="TGA Signature">;
+	uchar  Version;
+	uint32 _nullPadding;
+	uint32 TextureMaterialKind <read=getMaterialKind>; 
+	uint32 PixelWidth;
+	uint32 PixelHeight;
+	uint32 _nullPadding;
+	uint32 MipCount;
+} HEADER;
+
+typedef struct {
+	uint64 MipLevel;
+	uint32 ID_or_Magic; // 0x803F0000 is Magic #, otherwise is ID.
+	ubyte  _nullPadding;
+	uint32 TextureFormat <read=getTextureFormat>;
+	uint64 Always7;
+	uint16 _nullPadding;
+	uint32 FlagIsStreamed;
+	uint32 StreamDBMipCount; // usually same number of mips stored in streamdb
+	uint32 unk6;
+	uint32 unk7;
+	uint32 MipPixelWidth;
+	uint32 MipPixelHeight;
+	uint32 UnknownFlagA;
+	uint32 DecompressedSize;
+	uint32 FlagIsCompressed;
+	uint32 CompressedSize;
+	uint32 CumulativeCompSizeStreamDB;
+} MIPMAP_MAIN;
+
+typedef struct {
+	uint64 MipLevel;
+	uint32 MipPixelWidth;
+	uint32 MipPixelHeight;
+	uint32 UnknownFlagA;
+	uint32 DecompressedSize;
+	uint32 FlagIsCompressed;
+	uint32 CompressedSize;
+	uint32 CumulativeCompSizeStreamDB;
+} MIPMAP_SUB;
+
+string getMaterialKind(uint32 type) {
+	string value;
+	switch (type) {
+		case 0:
+			value = "TMK_NONE";
+			break;
+		case 1:
+			value = "TMK_ALBEDO";
+			break;
+		case 2:
+			value = "TMK_SPECULAR";
+			break;
+		case 3:
+			value = "TMK_NORMAL";
+			break;
+		case 4:
+			value = "TMK_SMOOTHNESS";
+			break;
+		case 5:
+			value = "TMK_COVER";
+			break;
+		case 6:
+			value = "TMK_SSSMASK";
+			break;
+		case 7:
+			value = "TMK_COLORMASK";
+			break;
+		case 8:
+			value = "TMK_BLOOMMASK";
+			break;
+		case 9:
+			value = "TMK_HEIGHTMAP";
+			break;
+		case 10:
+			value = "TMK_DECALALBEDO";
+			break;
+		case 11:
+			value = "TMK_DECALNORMAL";
+			break;
+		case 12:
+			value = "TMK_DECALSPECULAR";
+			break;
+		case 13:
+			value = "TMK_LIGHTPROJECT";
+			break;
+		case 14:
+			value = "TMK_PARTICLE";
+			break;
+		case 15:
+			value = "TMK_UNUSED_1";
+			break;
+		case 16:
+			value = "TMK_UNUSED_2";
+			break;
+		case 17:
+			value = "TMK_LIGHTMAP";
+			break;
+		case 18:
+			value = "TMK_UI";
+			break;
+		case 19:
+			value = "TMK_FONT";
+			break;
+		case 20:
+			value = "TMK_LEGACY_FLASH_UI";
+			break;
+		case 21:
+			value = "TMK_LIGHTMAP_DIRECTIONAL";
+			break;
+		case 22:
+			value = "TMK_BLENDMASK";
+			break;
+		case 23:
+			value = "TMK_COUNT";
+			break;
+		default:
+			value = "TMK_INVALID";
+			break;
+	}
+	return value;
+}
+
+string getTextureFormat(uint32 type) {
+	string value;
+	switch (type) {
+		case 0:
+			value = "FMT_NONE";
+			break;
+		case 1:
+			value = "FMT_RGBA32F";
+			break;
+		case 2:
+			value = "FMT_RGBA16F";
+			break;
+		case 3:
+			value = "FMT_RGBA8";
+			break;
+		case 4:
+			value = "FMT_ARGB8";
+			break;
+		case 5:
+			value = "FMT_ALPHA";
+			break;
+		case 6:
+			value = "FMT_L8A8_DEPRECATED";
+			break;
+		case 7:
+			value = "FMT_RG8";
+			break;
+		case 8:
+			value = "FMT_LUM8_DEPRECATED";
+			break;
+		case 9:
+			value = "FMT_INT8_DEPRECATED";
+			break;
+		case 10:
+			value = "FMT_BC1";
+			break;
+		case 11:
+			value = "FMT_BC3";
+			break;
+		case 12:
+			value = "FMT_DEPTH";
+			break;
+		case 13:
+			value = "FMT_DEPTH_STENCIL";
+			break;
+		case 14:
+			value = "FMT_X32F";
+			break;
+		case 15:
+			value = "FMT_Y16F_X16F";
+			break;
+		case 16:
+			value = "FMT_X16";
+			break;
+		case 17:
+			value = "FMT_Y16_X16";
+			break;
+		case 18:
+			value = "FMT_RGB565";
+			break;
+		case 19:
+			value = "FMT_R8";
+			break;
+		case 20:
+			value = "FMT_R11FG11FB10F";
+			break;
+		case 21:
+			value = "FMT_X16F";
+			break;
+		case 22:
+			value = "FMT_BC6H_UF16";
+			break;
+		case 23:
+			value = "FMT_BC7";
+			break;
+		case 24:
+			value = "FMT_BC4";
+			break;
+		case 25:
+			value = "FMT_BC5";
+			break;
+		case 26:
+			value = "FMT_RG16F";
+			break;
+		case 27:
+			value = "FMT_R10G10B10A2";
+			break;
+		case 28:
+			value = "FMT_RG32F";
+			break;
+		case 29:
+			value = "FMT_R32_UINT";
+			break;
+		case 30:
+			value = "FMT_R16_UINT";
+			break;
+		case 31:
+			value = "FMT_DEPTH16";
+			break;
+		case 32:
+			value = "FMT_RGBA8_SRGB";
+			break;
+		case 33:
+			value = "FMT_BC1_SRGB";
+			break;
+		case 34:
+			value = "FMT_BC3_SRGB";
+			break;
+		case 35:
+			value = "FMT_BC7_SRGB";
+			break;
+		case 36:
+			value = "FMT_BC6H_SF16";
+			break;
+		case 37:
+			value = "FMT_ASTC_4X4";
+			break;
+		case 38:
+			value = "FMT_ASTC_4X4_SRGB";
+			break;
+		case 39:
+			value = "FMT_ASTC_5X4";
+			break;
+		case 40:
+			value = "FMT_ASTC_5X4_SRGB";
+			break;
+		case 41:
+			value = "FMT_ASTC_5X5";
+			break;
+		case 42:
+			value = "FMT_ASTC_5X5_SRGB";
+			break;
+		case 43:
+			value = "FMT_ASTC_6X5";
+			break;
+		case 44:
+			value = "FMT_ASTC_6X5_SRGB";
+			break;
+		case 45:
+			value = "FMT_ASTC_6X6";
+			break;
+		case 46:
+			value = "FMT_ASTC_6X6_SRGB";
+			break;
+		case 47:
+			value = "FMT_ASTC_8X5";
+			break;
+		case 48:
+			value = "FMT_ASTC_8X5_SRGB";
+			break;
+		case 49:
+			value = "FMT_ASTC_8X6";
+			break;
+		case 50:
+			value = "FMT_ASTC_8X6_SRGB";
+			break;
+		case 51:
+			value = "FMT_ASTC_8X8";
+			break;
+		case 52:
+			value = "FMT_ASTC_8X8_SRGB";
+			break;
+		case 53:
+			value = "FMT_DEPTH32F";
+			break;
+		case 54:
+			value = "FMT_BC1_ZERO_ALPHA";
+			break;
+		case 55:
+			value = "FMT_NEXTAVAILABLE";
+			break;
+		default:
+			value = "FMT_INVALID";
+			break;
+	}
+	return value;
+}
+
+TGAFILE tgafile <name="DOOM Eternal TGA File">;
