@@ -1,0 +1,120 @@
+//------------------------------------------------
+//--- 010 Editor v10.0.1 Binary Template
+//
+//  File: DoomMapResources.bt
+//  Authors: SamPT
+//  Version: 1.0
+//  Purpose: Parse a DOOM Eternal .mapresources file
+//  Category: Game
+//  File Mask: *.mapresources
+//  ID Bytes: 
+//  History: March 10, 2021
+//------------------------------------------------
+
+struct MAP_RESOURCES;
+
+struct LAYER_ARRAY;
+struct TYPE_ARRAY;
+struct ASSET_ARRAY;
+struct MAP_ARRAY;
+
+struct LAYER;
+struct TYPE;
+struct ASSET;
+struct MAP;
+
+local string value;
+local int i;
+
+typedef struct 
+{		
+	BigEndian();
+	uint Magic;
+	LAYER_ARRAY layer <name=getLayerCount>;
+	TYPE_ARRAY type <name=getTypeCount>;
+	ASSET_ARRAY asset <name=getAssetCount, read=readAssetLabel>;
+	MAP_ARRAY map <name=getMapCount>;
+} MAP_RESOURCES;
+
+typedef struct 
+{	
+	BigEndian();
+	uint count;
+	LittleEndian();
+	for (i=0; i<(count); i+=1) 
+		LAYER layer <name=getLayerName>;			
+} LAYER_ARRAY;
+
+typedef struct 
+{
+	BigEndian();
+	uint64 count;
+	LittleEndian();
+	for (i=0; i<(count); i+=1) 
+		TYPE type <name=getTypeName>;			
+} TYPE_ARRAY;
+
+typedef struct
+{
+	BigEndian();
+	uint count;
+	for (i=0; i<(count); i+=1) 
+		ASSET asset <name=getAssetName, read=readAssetData>;		
+} ASSET_ARRAY;
+
+typedef struct
+{
+	BigEndian();
+	uint count;
+	LittleEndian();
+	for (i=0; i<(count); i+=1) 
+		MAP map <name=getMapName>;		
+} MAP_ARRAY;
+
+typedef	struct 
+{	
+	uint string_length;
+	char name[string_length];
+} LAYER;
+
+typedef struct 
+{
+	uint string_length;
+	char name[string_length];
+} TYPE;
+
+typedef struct
+{
+	uint type;
+	LittleEndian();
+	uint string_length;
+	char name[string_length];
+	uint unknown;
+	BigEndian();
+	uint unknown;
+	uint64 unknown;
+	uint64 unk3;
+} ASSET;
+
+typedef struct
+{
+	uint string_length;
+	char name[string_length];	
+} MAP;
+
+string getLayerCount( LAYER_ARRAY &array ) { return SPrintf(value, "Layers (%u)", array.count); }
+string getTypeCount( TYPE_ARRAY &array ) { return SPrintf(value, "Asset Types (%u)", array.count); }
+string getAssetCount( ASSET_ARRAY &array ) { return SPrintf(value, "Assets (%u)", array.count); }
+string getMapCount( MAP_ARRAY &array ) { return SPrintf(value, "Maps (%u)", array.count); }
+
+string getLayerName( LAYER &layer ) { return layer.name; }
+string getTypeName( TYPE &type ) { return type.name; }
+string getAssetName( ASSET &asset ) { return asset.name; }
+string getMapName( MAP &map ) { return map.name; }
+
+string readAssetLabel( ASSET_ARRAY &array ) { return "Type"; }
+string readAssetData( ASSET &asset ) { 
+    return SPrintf(value, "%s, %u, %u", asset.name, asset.type, asset.unk3); 
+}
+
+MAP_RESOURCES mapResources <name="DOOM Eternal Map Resources File">;
