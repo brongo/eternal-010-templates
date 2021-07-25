@@ -1,0 +1,79 @@
+//--- 010 Editor v11.0.1 Binary Template
+//
+//   File: DOOMSaveGame_COMPRESSED.bt
+//   Author: SamPT
+//   Version: 1.0
+//   Purpose: For game_duration.dat files that have not been decompressed.
+//   Date: March 14 2021
+//------------------------------------------------
+
+struct DOOMSAVE_COMPRESSED;
+struct SAVE_HEADER;
+struct COMPRESSED_CHUNK;
+struct CHECKSUM;
+struct DATA_TABLE;
+struct FOOTER;
+local int i;
+local string value;
+BigEndian();
+
+typedef struct {
+	
+	SAVE_HEADER save_header <name="SaveHeader">;
+	uint data_table_offset <name="tableOffset">;
+	
+	local int64 savedPosition = FTell();
+	FSeek(data_table_offset);
+	DATA_TABLE data_table <name="DataTable">;
+	FOOTER footer <name="Footer">;
+	
+	FSeek(savedPosition);
+	for (i=0; i<(data_table.num_table_entries); i+=1) { 
+		COMPRESSED_CHUNK compressed_chunk <name="CompressedChunk">;
+	}
+	
+} DOOMSAVE_COMPRESSED;
+
+typedef struct {
+	uint64 magic;
+	uint64 slotfile;
+	uint num_objects <name="numObjectsInDecompressedFile">;
+} SAVE_HEADER;
+
+typedef	struct {	
+	ushort mermaid_signature;
+	byte null_byte;
+	ushort compressed_size;
+  CHECKSUM checksum <read=getChecksumValue>;    
+	FSkip(compressed_size - 2);	
+} COMPRESSED_CHUNK;
+
+typedef struct {
+	ubyte b1;
+	ubyte b2;
+	ubyte b3;
+} CHECKSUM;
+
+typedef struct {
+	uint num_table_entries;
+	for (i=0; i<(num_table_entries); i+=1) { 
+		uint uncompressed_size;
+		uint compressed_size;
+		uint murmur3_hash;
+	}
+} DATA_TABLE;
+
+typedef struct {
+	uint64 total_compressed_size;
+} FOOTER <name="Footer">;
+
+string getChecksumValue( CHECKSUM &val ) {
+	local uint32 b1 = val.b1;
+	local uint32 b2 = val.b2;
+	local uint32 b3 = val.b3;
+	local uint32 checksum;
+	checksum = (b1 << 16) | (b2 << 8) | b3;
+	SPrintf(value, "%u", checksum);
+	return value;	
+}
+DOOMSAVE_COMPRESSED doomSaveCompressed <name="DOOM Eternal Saved Game [COMPRESSED]">;

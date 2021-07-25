@@ -1,0 +1,227 @@
+//------------------------------------------------
+//--- 010 Editor v11.0.1 Binary Template
+//
+//   File: DOOMSaveGame_Decompressed.bt
+//   Author: SamPT
+//   Version: 1.0
+//   Purpose: Template for DOOM Eternal game_duration.dat files
+//   Date: March 14 2021
+//------------------------------------------------
+
+LittleEndian();
+struct DOOMSAVE;
+struct CHUNK;
+struct ARRAY;
+local ubyte typeCheck;
+local uint j;
+local char signature_check[4];
+
+typedef struct {
+	ReadBytes(signature_check, 0, 4);
+	if (signature_check == "IDSA") {
+		FSkip(24);
+		BigEndian();
+	} else {
+		LittleEndian(); // For PS4 SaveWizard export
+	}
+	uint64 magic <hidden=true>;
+	uint64 slotfile <name="SlotFile",hidden=true>;
+	uint numObjects <hidden=true>;
+	LittleEndian();
+	for (j=0; j<(numObjects); j++) { 
+		CHUNK chunk <name=getChunkName, read=getChunkSize>;
+	}
+} DOOMSAVE;
+
+typedef	struct {	
+	uint chunk_size <hidden=true>;
+	ubyte strlen <hidden=true>;
+	char name[strlen/2] <hidden=true>;
+	char magic[13] <hidden=true>;
+	ubyte type <hidden=true>; 
+	if (type != 0) {
+		if (isLong()) {
+			uint children <hidden=true>;
+			local uint i;
+		} else {
+			ubyte children <hidden=true>;
+			local ubyte i;
+		}
+		if (children > 1) {
+			for (i=0; i<(children-1); i+=2) { 
+				ARRAY data <name=getArrayName, read=getArrayValues>; 
+			}
+		}
+	}
+} CHUNK;
+
+typedef struct {
+	ubyte strlen <hidden=true>;
+	char variable[strlen/2] <hidden=true>;
+	ubyte type <hidden=true>;
+  switch (type) {
+		case 0x00 :
+			break;		
+		case 0x01 : 
+			byte value <hidden=true>;
+			break;			
+		case 0x02 : 
+			int16 value <hidden=true>;
+			break;		
+		case 0x03 :  
+			int32 value <hidden=true>;
+			break;	
+		case 0x04 : 
+			int64 value <hidden=true>;
+			break;					
+		case 0x05 : 
+			ubyte value <hidden=true>;
+			break;						
+		case 0x06 : 
+			uint16 value <hidden=true>;
+			break;						
+		case 0x07 : 
+			uint32 value <hidden=true>;
+			break;
+		case 0x08 : 
+			uint64 value <hidden=true>;
+			break;						
+		case 0x09 : 
+			double value <hidden=true>;
+			break;			
+		case 0x0A : 
+			typeCheck = ReadByte();
+			if (typeCheck == 0) {
+				char value[1] <hidden=true>;
+			} else {
+				if (isLong()) {
+					uint strlenA <hidden=true>;
+					char value[(strlenA-1)/2] <hidden=true>;
+				} else {
+					ubyte strlenA <hidden=true>;
+					char value[strlenA/2] <hidden=true>;								
+				}
+			}
+			break;		
+		case 0x0B :
+			break;						
+		case 0x0C :
+			break;		
+		case 0x0D : // multiple values							             
+			ubyte numValues <hidden=true>;
+			local ubyte i;
+			local ubyte j;
+			for (i = 0; i < numValues; i+=2) {
+				ubyte type <hidden=true>;
+				ubyte children <hidden=true>;	
+				for(j = 0; j<(children-1); j+=2) { ARRAY data_child <name=getArrayName, read=getArrayValues>; }
+			}
+			break;	
+		case 0x0E : // array	
+			if (isLong()) {
+				uint children <hidden=true>;
+				local uint i;
+			} else {
+				ubyte children <hidden=true>;
+				local ubyte i;
+			}
+			for (i=0; i<(children-1); i+=2) { ARRAY data_child <name=getArrayName, read=getArrayValues>; }
+			break;
+		default : // unknown, terminate process
+			break;
+	}
+} ARRAY;
+
+string getDoomSaveChildren ( DOOMSAVE &save ) {
+	local string value;
+	SPrintf(value, "Total entries: %u", save.numObjects);
+	return value;
+}
+string getChunkName( CHUNK &chunk ) {
+	return chunk.name;
+}
+string getChunkSize( CHUNK &chunk ) {
+	if (!chunk.type)
+		return "";
+	local string value;
+	local string grammar = "children";
+	if (chunk.children/2 == 1) grammar = "child";
+	SPrintf(value, "Object (%u %s)", (chunk.children/2), grammar);
+	return value;	
+}
+string getArrayName( ARRAY &array ) {
+	return array.variable;
+}
+string getArrayValues( ARRAY &array ) {
+	local string value;
+	switch (array.type) {
+		case 0x00 : 
+			return "null";
+			break;		
+		case 0x01 : 
+			SPrintf(value, "%u", array.value);
+			break;			
+		case 0x02 : 
+			SPrintf(value, "%u", array.value);
+			break;		
+		case 0x03 :  
+			SPrintf(value, "%u", array.value);
+			break;	
+		case 0x04 : 
+			SPrintf(value, "%Lu", array.value);
+			break;					
+		case 0x05 : 
+			SPrintf(value, "%u", array.value);
+			break;						
+		case 0x06 : 
+			SPrintf(value, "%u", array.value);
+			break;						
+		case 0x07 : 
+			SPrintf(value, "%u", array.value);
+			break;
+		case 0x08 : 
+			SPrintf(value, "%Lu", array.value);
+			break;						
+		case 0x09 : 
+			SPrintf(value, "%lf", array.value);
+			break;			
+		case 0x0A : 
+			return array.value;
+			break;
+		case 0x0B :
+			return "false";
+			break;
+		case 0x0C :
+			return "true";
+			break;
+		case 0x0D :
+			local uint children = array.numValues;
+			if (children % 2 == 0) 
+				SPrintf(value, "Values (%u)", (children/2));
+			else
+				SPrintf(value, "Values (%u)", ((children-1)/2));
+			break;
+		case 0x0E :
+			local uint children = array.children;
+			local string grammar = "children";
+			if (children % 2 == 0) {
+				if (children/2 == 1) grammar = "child";
+				SPrintf(value, "Array (%u %s)", (children/2), grammar);
+			} else {
+				if (((children-1)/2) == 1) grammar = "child";
+				SPrintf(value, "Array (%u %s)", ((children-1)/2), grammar);
+			}
+			break;
+		default :
+			return "type error";
+			break;
+	}
+	return value;
+}
+byte isLong() {
+	// detect ID Software optimized integers. odd numbers = uint32.
+	typeCheck = ReadByte();
+	if (typeCheck % 2 == 0) return 0;
+	return 1;
+} 
+DOOMSAVE doomSave <name="DOOM Eternal Saved Game", read=getDoomSaveChildren>;
