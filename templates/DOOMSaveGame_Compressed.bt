@@ -44,7 +44,7 @@ typedef	struct {
 	ushort mermaid_signature;
 	byte null_byte;
 	ushort compressed_size;
-  CHECKSUM checksum <read=getChecksumValue>;    
+	CHECKSUM checksum <read=getChecksumValue>;    
 	FSkip(compressed_size - 2);	
 } COMPRESSED_CHUNK;
 
