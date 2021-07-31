@@ -2,9 +2,9 @@
 //
 //   File: DoomEternalTGA.bt
 //   Author: SamPT
-//   Version: 1.2
+//   Version: 1.3
 //   Purpose: For reading DOOM Eternal .tga files.
-//   Date: August 25, 2021
+//   Date: August 30, 2021
 //   History: Original release: March 31, 2021
 //------------------
 
@@ -12,59 +12,67 @@ LittleEndian();
 local int i;		
 struct TGAFILE;
 struct HEADER;
-struct MIPMAP_MAIN;
 struct MIPMAP_SUB;
 
 typedef struct {
 	HEADER header <name="TGA Header">;
-	MIPMAP_MAIN MipData_Main;
-	for (i=1; i<header.MipCount; i++) {
-		MIPMAP_SUB MipData_Sub;
+	for (i = 0; i < header.MipCount; i++) {
+		MIPMAP_SUB MipMap_Sub;
 	}
 } TGAFILE;
 
 typedef struct {		
-	char Signature[3] <name="TGA Signature">;
-	uchar  Version;
-	uint32 _nullPadding;
-	uint32 TextureMaterialKind <read=getMaterialKind>; 
-	uint32 PixelWidth;
-	uint32 PixelHeight;
-	uint32 _nullPadding;
-	uint32 MipCount;
+	int Signature <name="BIM/TGA Signature">;
+	int TextureType <read=getTextureType>; // enum textureType_t
+	int TextureMaterialKind <read=getMaterialKind>; 
+	int PixelWidth;
+	int PixelHeight;
+	int Depth; 
+	int MipCount; // "numLevels" in IDA
+	int64 MipLevel;
+	float unkFloat1; // usually 1.0, purpose unknown
+	char boolIsEnvironmentMap;
+	int TextureFormat <read=getTextureFormat>;
+	int Always7;
+	int _nullPadding;
+	int16 AtlasPadding;
+	char boolIsStreamed;
+	char unkBool;
+	char boolNoMips;
+	char boolFFTBloom;
+	int StreamDBMipCount; // usually same number of mips stored in streamdb
 } HEADER;
 
 typedef struct {
-	uint64 MipLevel;
-	float  unkFloat1; // usually 1.0, purpose unknown
-	ubyte  _nullPadding;
-	uint32 TextureFormat <read=getTextureFormat>;
-	uint64 Always7;
-	uint16 _nullPadding;
-	uint32 FlagIsStreamed;
-	uint32 StreamDBMipCount; // usually same number of mips stored in streamdb
-	uint32 unk6;
-	uint32 unk7;
-	uint32 MipPixelWidth;
-	uint32 MipPixelHeight;
-	uint32 UnknownFlagA;
-	uint32 DecompressedSize;
-	uint32 FlagIsCompressed;
-	uint32 CompressedSize;
-	uint32 CumulativeCompSizeStreamDB;
-} MIPMAP_MAIN;
-
-typedef struct {
-	uint64 MipLevel;
-	uint32 MipPixelWidth;
-	uint32 MipPixelHeight;
-	uint32 UnknownFlagA;
-	uint32 DecompressedSize;
-	uint32 FlagIsCompressed;
-	uint32 CompressedSize;
-	uint32 CumulativeCompSizeStreamDB;
+	int64 MipLevel;
+	int MipPixelWidth;
+	int MipPixelHeight;
+	int UnknownFlagA;
+	int DecompressedSize;
+	int FlagIsCompressed;
+	int CompressedSize;
+	int CumulativeCompSizeStreamDB;
 } MIPMAP_SUB;
 
+string getTextureType(uint32 type) {
+	string value;
+	switch (type) {
+		case 0:
+			value = "TT_2D";
+			break;
+		case 1:
+			value = "TT_3D";
+			break;
+		case 2:
+			value = "TT_CUBIC";
+			break;
+		default:
+			value = "TT_INVALID";
+			break;
+	}
+	return value;
+}
+			
 string getMaterialKind(uint32 type) {
 	string value;
 	switch (type) {
