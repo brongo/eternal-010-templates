@@ -10,16 +10,16 @@
 
 LittleEndian();
 local int i;		
-struct TGA_HEADER;
-struct SUBHEADER;
+struct ETERNAL_TGA_HEADER;
+struct HEADER;
 struct MIPMAP;
 
 typedef struct {
-	SUBHEADER subheader <name="TGA/BIM Header">;
-	for (i = 0; i < subheader.MipCount; i++) {
+	HEADER header <name="BIM Header">;
+	for (i = 0; i < header.MipCount; i++) {
 		MIPMAP mipmap;
 	}
-} TGA_HEADER;
+} ETERNAL_TGA_HEADER;
 
 typedef struct
 {		
@@ -43,7 +43,7 @@ typedef struct
 	byte boolNoMips;                                            // 1 if image has no mips
 	byte boolFFTBloom;                                          // 1 if using FFT Bloom
 	int StreamDBMipCount;                                       // usually same number of mips stored in streamdb
-} SUBHEADER;
+} HEADER;
 
 typedef struct
 {
@@ -336,4 +336,4 @@ string getTextureFormat_t(uint32 type) {
 	return value;
 }
 
-TGA_HEADER tga_header <name="DOOM Eternal TGA/BIM File Header">;
+ETERNAL_TGA_HEADER eternal_tga_header <name="DOOM Eternal TGA Header">;
