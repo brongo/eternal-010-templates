@@ -27,95 +27,100 @@ struct streamDatabasePrefetchTableB_t;
 
 typedef struct 
 {		
-	uint64 magic;
-	uint32 headerLength;																// 50 A5 C2 29 2E F3 C7 61
-	uint32 pad0;																				// null padding
-	uint32 pad1;																				// null padding
-	uint32 pad2;																				// null padding
-	uint32 numEntries;																	// Does not include prefetch entries
-	uint32 flags;																				// Always 3
+    uint64 magic;                                           // 50 A5 C2 29 2E F3 C7 61
+    uint32 headerLength;
+    uint32 pad0;                                            // null padding
+    uint32 pad1;                                            // null padding
+    uint32 pad2;                                            // null padding
+    uint32 numEntries;                                      // Does not include prefetch entries
+    uint32 flags;                                           // Always 3
 } streamDatabaseHeader_t;
 
 typedef struct
 {
-	uint32 numPrefetchBlocks;
-	uint32 totalLength;																	// Total length of prefetch header, blocks, entries
+    uint32 numPrefetchBlocks;
+    uint32 totalLength;                                     // Total length of prefetch header, blocks, entries
 } streamDatabasePrefetchHeader_t;
 
 typedef struct 
 {
-	uint64 name;																				// Hash of "AI" or "FirstPerson"
-	uint32 firstItemIndex;															// Offset relative to end of prefetch blocks
-	uint32 numItems;																		// Num prefetch entries in this block
+    uint64 name;                                            // Hash of "AI" or "FirstPerson"
+    uint32 firstItemIndex;                                  // Offset relative to end of prefetch blocks
+    uint32 numItems;                                        // Num prefetch entries in this block
 } streamDatabasePrefetchBlock_t;
 
 typedef struct
 {
-	uint64 identity;																		// Shuffled version of .resources ID
-	uint32 offset16 <read=readFileOffset>; 							// Multiply by 16 for real offset
-	uint32 length;
+    uint64 identity;                                        // Shuffled version of .resources ID
+    uint32 offset16 <read=readFileOffset>;                  // Multiply by 16 for real offset
+    uint32 length;
 } streamDatabaseEntry2_t;
 
 typedef struct
 {
-	for (i=0; i < streamDatabaseHeader.numEntries; i++) 
-		streamDatabaseEntry2_t streamDatabaseEntry2 <read=readEntryID>;
+    for (i=0; i < streamDatabaseHeader.numEntries; i++) 
+        streamDatabaseEntry2_t streamDatabaseEntry2 <read=readEntryID>;
 } streamDatabaseEntryTable_t;
 
 typedef struct
 {
-	for (i=0; i < streamDatabasePrefetchBlock[0].numItems; i++)
-		uint64 prefetchID <read=readPrefetchID>;
+    for (i=0; i < streamDatabasePrefetchBlock[0].numItems; i++)
+        uint64 prefetchID <read=readPrefetchID>;
 } streamDatabasePrefetchTableA_t;
 
 typedef struct
 {
-	for (i=0; i < streamDatabasePrefetchBlock[1].numItems; i++)
-		uint64 prefetchID <read=readPrefetchID>;
+    for (i=0; i < streamDatabasePrefetchBlock[1].numItems; i++)
+        uint64 prefetchID <read=readPrefetchID>;
 } streamDatabasePrefetchTableB_t;
 
 typedef struct 
 {
-	streamDatabaseHeader_t streamDatabaseHeader;
-	streamDatabaseEntryTable_t streamDatabaseEntryTable;
-	streamDatabasePrefetchHeader_t streamDatabasePrefetchHeader;
+    streamDatabaseHeader_t streamDatabaseHeader;
+    streamDatabaseEntryTable_t streamDatabaseEntryTable;
+    streamDatabasePrefetchHeader_t streamDatabasePrefetchHeader;
 	
-	for (i=0; i < streamDatabasePrefetchHeader.numPrefetchBlocks; i++)
-		streamDatabasePrefetchBlock_t streamDatabasePrefetchBlock <read=readPrefetchName>;
+    for (i=0; i < streamDatabasePrefetchHeader.numPrefetchBlocks; i++)
+        streamDatabasePrefetchBlock_t streamDatabasePrefetchBlock <read=readPrefetchName>;
 		
-	if (streamDatabasePrefetchHeader.numPrefetchBlocks > 0)
-		streamDatabasePrefetchTableA_t streamDatabasePrefetchTableA;
+    if (streamDatabasePrefetchHeader.numPrefetchBlocks > 0)
+        streamDatabasePrefetchTableA_t streamDatabasePrefetchTableA;
 
-	if (streamDatabasePrefetchHeader.numPrefetchBlocks > 1)
-		streamDatabasePrefetchTableB_t streamDatabasePrefetchTableB;
-		
+    if (streamDatabasePrefetchHeader.numPrefetchBlocks > 1)
+        streamDatabasePrefetchTableB_t streamDatabasePrefetchTableB;
+	
 } streamDatabaseFile_t;
 
-// multiply by 16 for the real file offset
-string readFileOffset (uint32 &v) {
-	local string value;
-	local uint64 zTmp = 16 * (uint64)v;
-	SPrintf(value, "%Lu", zTmp);
-	return value;
+
+string readFileOffset (uint32 &v) 
+{
+    // multiply by 16 for the real file offset
+    local string value;
+    local uint64 zTmp = 16 * (uint64)v;
+    SPrintf(value, "%Lu", zTmp);
+    return value;
 }
 
-string readPrefetchID (uint64 &v) {
-	local string value;
-	SPrintf(value, "%020Lu", v);
-	return value;
+string readPrefetchID (uint64 &v) 
+{
+    local string value;
+    SPrintf(value, "%020Lu", v);
+    return value;
 }
 
-string readEntryID (streamDatabaseEntry2_t &v) {
-	local string value;
-	SPrintf(value, "%020Lu", v.identity);
-	return value;
+string readEntryID (streamDatabaseEntry2_t &v) 
+{
+    local string value;
+    SPrintf(value, "%020Lu", v.identity);
+    return value;
 }
 
-string readPrefetchName (streamDatabasePrefetchBlock_t &v) {
-	if (v.name == 5891933081285280768)
-		return "Name: \"AI\" ";
-	if (v.name == 6801151928053439575)
-		return "Name: \"FirstPerson\" ";
+string readPrefetchName (streamDatabasePrefetchBlock_t &v)
+{
+    if (v.name == 5891933081285280768)
+        return "Name: \"AI\" ";
+    if (v.name == 6801151928053439575)
+        return "Name: \"FirstPerson\" ";
 }
 
 streamDatabaseFile_t streamDatabaseFile <name="DOOM Eternal StreamDB">;
