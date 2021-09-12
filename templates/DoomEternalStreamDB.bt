@@ -2,9 +2,9 @@
 //
 //   File: "Doom Eternal Streamdb.bt"
 //   Author: SamPT
-//   Version: 1.0
+//   Version: 1.1
 //   Purpose: For reading DOOM Eternal .streamdb files.
-//   Date: August 25 2021
+//   Date: September 12 2021
 //   Category: Game
 //   File Mask: *.streamdb
 //   ID Bytes: 50 A5 C2 29 2E F3 C7 61
@@ -12,118 +12,84 @@
 
 LittleEndian();
 local int i;
-struct STREAM;
-struct HEADER;
-struct TABLE_A;
-struct TABLE_B;
-struct TABLE_B_HEADER;
-struct TABLE_BODY_AI;
-struct TABLE_BODY_FIRSTPERSON;
-struct ENTRY_A;
-struct ENTRY_B;
 
-typedef struct {
-	HEADER header <name="Streamdb File Header">;
-	TABLE_A table_A <name="Index: File Entries">;
-	TABLE_B table_B <name="Special Tables">;
-} STREAM;
+// Confirmed IDA structs
+struct streamDatabaseHeader_t;
+struct streamDatabasePrefetchHeader_t;
+struct streamDatabasePrefetchBlock_t;
+struct streamDatabaseEntry2_t;
 
-typedef struct {		
-	uint64 magicNumber <name="Streamdb Magic Number">;
-	uint32 dataStartOffset <name="Starting Offset: Compressed Data">;
-	uint64 nullBytes64;
-	uint32 nullBytes32;
-	local uint64 data_start_pos = dataStartOffset;
-} HEADER;
+// Convenience structs
+struct streamDatabaseFile_t;
+struct streamDatabaseEntryTable_t;
+struct streamDatabasePrefetchTableA_t;
+struct streamDatabasePrefetchTableB_t;
 
-typedef struct {
-	uint32 numEntries;
-	uint32 tableType;
-	for (i=0; i < numEntries; i++)
-		ENTRY_A entry_a <name=readEntryDecimal_A, read=readEntryCompressedSize>;
-} TABLE_A;
+typedef struct 
+{		
+	uint64 magic;
+	uint32 headerLength;																// 50 A5 C2 29 2E F3 C7 61
+	uint32 pad0;																				// null padding
+	uint32 pad1;																				// null padding
+	uint32 pad2;																				// null padding
+	uint32 numEntries;																	// Does not include prefetch entries
+	uint32 flags;																				// Always 3
+} streamDatabaseHeader_t;
 
-typedef struct {
-	uint32 numSpecialTables;
-	uint32 tableSizeInBytes;
+typedef struct
+{
+	uint32 numPrefetchBlocks;
+	uint32 totalLength;																	// Total length of prefetch header, blocks, entries
+} streamDatabasePrefetchHeader_t;
+
+typedef struct 
+{
+	uint64 name;																				// Hash of "AI" or "FirstPerson"
+	uint32 firstItemIndex;															// Offset relative to end of prefetch blocks
+	uint32 numItems;																		// Num prefetch entries in this block
+} streamDatabasePrefetchBlock_t;
+
+typedef struct
+{
+	uint64 identity;																		// Shuffled version of .resources ID
+	uint32 offset16 <read=readFileOffset>; 							// Multiply by 16 for real offset
+	uint32 length;
+} streamDatabaseEntry2_t;
+
+typedef struct
+{
+	for (i=0; i < streamDatabaseHeader.numEntries; i++) 
+		streamDatabaseEntry2_t streamDatabaseEntry2 <read=readEntryID>;
+} streamDatabaseEntryTable_t;
+
+typedef struct
+{
+	for (i=0; i < streamDatabasePrefetchBlock[0].numItems; i++)
+		uint64 prefetchID <read=readPrefetchID>;
+} streamDatabasePrefetchTableA_t;
+
+typedef struct
+{
+	for (i=0; i < streamDatabasePrefetchBlock[1].numItems; i++)
+		uint64 prefetchID <read=readPrefetchID>;
+} streamDatabasePrefetchTableB_t;
+
+typedef struct 
+{
+	streamDatabaseHeader_t streamDatabaseHeader;
+	streamDatabaseEntryTable_t streamDatabaseEntryTable;
+	streamDatabasePrefetchHeader_t streamDatabasePrefetchHeader;
 	
-	for (i=0; i < numSpecialTables; i++)
-		TABLE_B_HEADER table_b_header <name=readTableType>;
-	
-  if (numSpecialTables > 0) {
-		if (table_b_header[0].hashValue == 5891933081285280768)
-			TABLE_BODY_AI table_body_ai <name="Table Entries: AI">;
-		else
-			TABLE_BODY_FIRSTPERSON table_body_firstperson <name="Table Entries: FirstPerson">;
-	}
+	for (i=0; i < streamDatabasePrefetchHeader.numPrefetchBlocks; i++)
+		streamDatabasePrefetchBlock_t streamDatabasePrefetchBlock <read=readPrefetchName>;
+		
+	if (streamDatabasePrefetchHeader.numPrefetchBlocks > 0)
+		streamDatabasePrefetchTableA_t streamDatabasePrefetchTableA;
 
-	if (numSpecialTables > 1) {
-		if (table_b_header[1].hashValue == 5891933081285280768)
-			TABLE_BODY_AI table_body_ai <name="Table Entries: AI">;
-		else
-			TABLE_BODY_FIRSTPERSON table_body_firstperson <name="Table Entries: FirstPerson">;
-	}
-	
-} TABLE_B;
-
-typedef struct {
-	uint64 hashValue <name=readHash>;
-	uint32 numEntriesBefore;
-	uint32 numEntries;
-} TABLE_B_HEADER;
-
-typedef struct {  
-
-	if (table_b_header[0].hashValue == 5891933081285280768)
-		local int index = 0;
-	else
-		local int index = 1;
-
-	for (i=0; i < table_b_header[index].numEntries; i++)
-		ENTRY_B entry_b <name=readEntryDecimal_B, read=readEntryHex_B>;
-
-} TABLE_BODY_AI;
-
-typedef struct {
-
-	if (table_b_header[0].hashValue == 6801151928053439575)
-		local int index = 0;
-	else
-		local int index = 1;
-
-	for (i=0; i < table_b_header[index].numEntries; i++)
-		ENTRY_B entry_B <name=readEntryDecimal_B, read=readEntryHex_B>;
-
-} TABLE_BODY_FIRSTPERSON;
-
-typedef struct {
-	local uint64 longentry = ReadUInt64(FTell());
-	uint32 entry_ID_A <hidden=true>;
-	uint32 entry_ID_B <hidden=true>;
-	uint32 fileOffset <read=readFileOffset>; // multiply by 16 for real offset
-	uint32 compressedSize;
-} ENTRY_A;
-
-typedef struct {
-	local uint64 longentry = ReadUInt64(FTell());
-	uint32 entry_ID_A <hidden=true>;
-	uint32 entry_ID_B <hidden=true>;
-} ENTRY_B;
-
-string readHash (uint64 hashValue) {
-	if (hashValue == 5891933081285280768)
-		return "Hash of 'AI'";
-	if (hashValue == 6801151928053439575)
-		return "Hash of 'FirstPerson'";
-	return "";
-}
-
-string readTableType (TABLE_B_HEADER &v) {
-	if (v.hashValue == 5891933081285280768)
-		return "Table Header: AI ";
-	if (v.hashValue == 6801151928053439575)
-		return "Table Header: FirstPerson ";
-}
+	if (streamDatabasePrefetchHeader.numPrefetchBlocks > 1)
+		streamDatabasePrefetchTableB_t streamDatabasePrefetchTableB;
+		
+} streamDatabaseFile_t;
 
 // multiply by 16 for the real file offset
 string readFileOffset (uint32 &v) {
@@ -133,43 +99,23 @@ string readFileOffset (uint32 &v) {
 	return value;
 }
 
-// use if you need fileOffset for csv export
-string readEntryFileOffset (ENTRY_A &v) {
+string readPrefetchID (uint64 &v) {
 	local string value;
-	local uint64 realOffset = 16 * (uint64)v.fileOffset;
-	SPrintf(value, "%Lu", realOffset);
+	SPrintf(value, "%020Lu", v);
 	return value;
 }
 
-// use if you need compressedSize for csv export
-string readEntryCompressedSize (ENTRY_A &v) {
+string readEntryID (streamDatabaseEntry2_t &v) {
 	local string value;
-	SPrintf(value, "%Lu", v.compressedSize);
+	SPrintf(value, "%020Lu", v.identity);
 	return value;
 }
 
-// consolidate when you're not feeling lazy...
-string readEntryHex_A (ENTRY_A &v) {
-	local string value;
-	SPrintf(value, "%08X %08X", v.entry_ID_B, v.entry_ID_A);
-	return value;
-}
-string readEntryHex_B (ENTRY_B &v) {
-	local string value;
-	SPrintf(value, "%08X %08X", v.entry_ID_B, v.entry_ID_A);
-	return value;
+string readPrefetchName (streamDatabasePrefetchBlock_t &v) {
+	if (v.name == 5891933081285280768)
+		return "Name: \"AI\" ";
+	if (v.name == 6801151928053439575)
+		return "Name: \"FirstPerson\" ";
 }
 
-// consolidate when you're not feeling lazy...
-string readEntryDecimal_A (ENTRY_A &v) {
-	local string value;
-	SPrintf(value, "%020Lu", v.longentry);
-	return value;
-}
-string readEntryDecimal_B (ENTRY_B &v) {
-	local string value;
-	SPrintf(value, "%020Lu", v.longentry);
-	return value;
-}
-
-STREAM stream <name="DOOM Eternal StreamDB">;
+streamDatabaseFile_t streamDatabaseFile <name="DOOM Eternal StreamDB">;
